@@ -91,7 +91,7 @@ public class MyAction extends AnAction {
 
                     boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
                     String cmd = hasKeyword
-                            ? "grep -i " + quoteShell(keyword) + " " + env.getLogPath()
+                            ? "grep -ia " + quoteShell(keyword) + " " + env.getLogPath()
                             : "tail -f " + env.getLogPath();
 
                     session = ssh.startSession();
