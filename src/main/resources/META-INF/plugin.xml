@@ -15,6 +15,7 @@
     ]]>
     </description>
 
+    <idea-version since-build="223" until-build="223.*"/>
 
     <actions>
         <action id="MyPluginAction"

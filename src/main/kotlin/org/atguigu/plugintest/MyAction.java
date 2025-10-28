@@ -10,6 +10,8 @@ import net.schmizz.sshj.transport.verification.HostKeyVerifier;
 
 import javax.swing.*;
 import javax.swing.text.*;
+import javax.swing.text.View;
+import javax.swing.text.ViewFactory;
 import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -107,17 +109,19 @@ public class MyAction extends AnAction {
 
                         String line;
                         while ((line = reader.readLine()) != null && isReading) {
-                            final String logLine = line;
-                            SwingUtilities.invokeLater(() -> {
-                                try {
-                                    doc.insertString(doc.getLength(), logLine + "\n",
-                                            hasKeyword ? keywordStyle : defaultStyle);
-                                    trimLog(doc);
-                                    logPane.setCaretPosition(doc.getLength());
-                                } catch (BadLocationException e) {
-                                    e.printStackTrace();
-                                }
-                            });
+                            for (String part : splitAndFormatXml(line)) {
+                                final String formatted = part;
+                                SwingUtilities.invokeLater(() -> {
+                                    try {
+                                        doc.insertString(doc.getLength(), formatted + "\n",
+                                                hasKeyword ? keywordStyle : defaultStyle);
+                                        trimLog(doc);
+                                        logPane.setCaretPosition(doc.getLength());
+                                    } catch (BadLocationException e) {
+                                        e.printStackTrace();
+                                    }
+                                });
+                            }
                         }
                     }
                 } catch (Exception ex) {
@@ -164,17 +168,23 @@ public class MyAction extends AnAction {
         JTextPane logPane = new JTextPane();
         logPane.setEditable(false);
         logPane.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
+        logPane.setEditorKit(new StyledEditorKit() {
+            @Override
+            public ViewFactory getViewFactory() {
+                return elem -> new WrappedPlainView(elem, true);
+            }
+        });
+
         JScrollPane scrollPane = new JScrollPane(logPane);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         JPanel topPanel = new JPanel();
         topPanel.add(new JLabel("环境:")); topPanel.add(envSelector);
         topPanel.add(new JLabel("关键词:")); topPanel.add(keywordField);
-        topPanel.add(startButton);
-        topPanel.add(stopButton);
-        topPanel.add(addConfigButton);
-        topPanel.add(editConfigButton);
-        topPanel.add(deleteConfigButton);
-        topPanel.add(clearLogButton);
+        topPanel.add(startButton); topPanel.add(stopButton);
+        topPanel.add(addConfigButton); topPanel.add(editConfigButton);
+        topPanel.add(deleteConfigButton); topPanel.add(clearLogButton);
         topPanel.add(exportLogButton);
 
         frame.add(topPanel, BorderLayout.NORTH);
@@ -190,14 +200,6 @@ public class MyAction extends AnAction {
             }
             EnvConfig selected = (EnvConfig) envSelector.getSelectedItem();
             String keyword = keywordField.getText().trim();
-
-            StyledDocument doc = logPane.getStyledDocument();
-            try {
-                doc.insertString(doc.getLength(), "\n开始读取 [" + selected.getName() + "] 的日志...\n", logPane.getStyle("default"));
-            } catch (BadLocationException ex) {
-                ex.printStackTrace();
-            }
-
             LogReaderContext context = new LogReaderContext(selected, keyword, logPane);
             contextHolder[0] = context;
             context.start();
@@ -207,82 +209,6 @@ public class MyAction extends AnAction {
             if (contextHolder[0] != null && contextHolder[0].isRunning()) {
                 contextHolder[0].stop();
                 JOptionPane.showMessageDialog(null, "日志读取已停止");
-            } else {
-                JOptionPane.showMessageDialog(null, "当前没有正在读取的日志");
-            }
-        });
-
-        addConfigButton.addActionListener(ev -> {
-            JTextField nameField = new JTextField();
-            JTextField hostField = new JTextField();
-            JTextField userField = new JTextField();
-            JPasswordField passField = new JPasswordField();
-            JTextField logPathField = new JTextField();
-
-            JPanel panel = new JPanel(new GridLayout(0, 2));
-            panel.add(new JLabel("名称")); panel.add(nameField);
-            panel.add(new JLabel("IP")); panel.add(hostField);
-            panel.add(new JLabel("用户名")); panel.add(userField);
-            panel.add(new JLabel("密码")); panel.add(passField);
-            panel.add(new JLabel("日志路径")); panel.add(logPathField);
-
-            int result = JOptionPane.showConfirmDialog(null, panel, "新增环境配置", JOptionPane.OK_CANCEL_OPTION);
-            if (result == JOptionPane.OK_OPTION) {
-                EnvConfig cfg = new EnvConfig(
-                        nameField.getText().trim(),
-                        hostField.getText().trim(),
-                        userField.getText().trim(),
-                        new String(passField.getPassword()),
-                        logPathField.getText().trim()
-                );
-                configs.add(cfg);
-                ConfigManager.saveConfigs(configs);
-                envSelector.addItem(cfg);
-            }
-        });
-
-        editConfigButton.addActionListener(ev -> {
-            EnvConfig selected = (EnvConfig) envSelector.getSelectedItem();
-            if (selected == null) return;
-
-            JTextField nameField = new JTextField(selected.getName());
-            JTextField hostField = new JTextField(selected.getHost());
-            JTextField userField = new JTextField(selected.getUser());
-            JPasswordField passField = new JPasswordField(selected.getPassword());
-            JTextField logPathField = new JTextField(selected.getLogPath());
-
-            JPanel panel = new JPanel(new GridLayout(0, 2));
-            panel.add(new JLabel("名称")); panel.add(nameField);
-            panel.add(new JLabel("IP")); panel.add(hostField);
-            panel.add(new JLabel("用户名")); panel.add(userField);
-            panel.add(new JLabel("密码")); panel.add(passField);
-            panel.add(new JLabel("日志路径")); panel.add(logPathField);
-
-            int result = JOptionPane.showConfirmDialog(null, panel, "编辑环境配置", JOptionPane.OK_CANCEL_OPTION);
-            if (result == JOptionPane.OK_OPTION) {
-                selected.name = nameField.getText().trim();
-                selected.host = hostField.getText().trim();
-                selected.user = userField.getText().trim();
-                selected.password = new String(passField.getPassword());
-                selected.logPath = logPathField.getText().trim();
-
-                ConfigManager.saveConfigs(configs);
-                envSelector.repaint();
-            }
-        });
-
-        deleteConfigButton.addActionListener(ev -> {
-            EnvConfig selected = (EnvConfig) envSelector.getSelectedItem();
-            if (selected == null) return;
-
-            int confirm = JOptionPane.showConfirmDialog(null,
-                    "确定要删除配置 [" + selected.getName() + "] 吗？",
-                    "确认删除", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                configs.remove(selected);
-                ConfigManager.saveConfigs(configs);
-                envSelector.removeItem(selected);
-                JOptionPane.showMessageDialog(null, "配置已删除");
             }
         });
 
@@ -315,5 +241,42 @@ public class MyAction extends AnAction {
 
     private String quoteShell(String str) {
         return "'" + str.replace("'", "'\"'\"'") + "'";
+    }
+
+    // 🔍 按 XML 声明分割并格式化
+    private List<String> splitAndFormatXml(String line) {
+        List<String> result = new ArrayList<>();
+        if (line == null || !line.contains("<?xml")) {
+            result.add(line);
+            return result;
+        }
+
+        String[] parts = line.split("(?=<\\?xml )");
+        for (String part : parts) {
+            if (part.isBlank()) continue;
+            if (part.trim().startsWith("<?xml")) {
+                result.add(formatXml(part.trim()));
+            } else {
+                result.add(part);
+            }
+        }
+        return result;
+    }
+
+    private String formatXml(String xmlText) {
+        try {
+            javax.xml.transform.Source xmlInput = new javax.xml.transform.stream.StreamSource(new StringReader(xmlText));
+            StringWriter stringWriter = new StringWriter();
+            javax.xml.transform.Result xmlOutput = new javax.xml.transform.stream.StreamResult(stringWriter);
+            javax.xml.transform.Transformer transformer = javax.xml.transform.TransformerFactory.newInstance().newTransformer();
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+            transformer.transform(xmlInput, xmlOutput);
+            return "\n================ XML START ================\n" +
+                    stringWriter.toString().trim() +
+                    "\n================ XML END ==================\n";
+        } catch (Exception e) {
+            return xmlText;
+        }
     }
 }
