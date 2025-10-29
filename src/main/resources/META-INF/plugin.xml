@@ -1,30 +1,16 @@
 <idea-plugin>
-    <id>my.plugin.id</id>
-    <name>LogSearchBro</name>
-    <vendor email="you@example.com">Your Name</vendor>
+    <id>org.atguigu.plugintest</id>
+    <name>Novel Status Bar</name>
+    <vendor email="you@example.com">Atguigu</vendor>
+    <version>1.0.0</version>
 
-    <description>
-        <![CDATA[
-    <html>
-    <h3>大家好我是来自工作台练习两年半的哥哥，蔡徐浩</h3><br/>
-    <b>作者: </b>Ch只因哥<br/><br/>
-    <b>flow：</b>🐔🐔🐔只因你太美,哦babe<br/><br/>
-    <h2>个人评价</h2>
-    <p>厉不厉害你坤哥~</p>
-    </html>
-    ]]>
-    </description>
+    <depends>com.intellij.modules.platform</depends>
 
-    <idea-version since-build="223" until-build="223.*"/>
-
-    <actions>
-        <action id="MyPluginAction"
-                class="org.atguigu.plugintest.MyAction"
-                text="日志哥"
-                description="测试插件是否正常运行">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
-    </actions>
+    <extensions defaultExtensionNs="com.intellij">
+        <statusBarWidgetFactory
+                implementation="org.atguigu.plugintest.NovelStatusBarWidgetFactory"
+                id="NovelStatusBarWidget"/>
+    </extensions>
 
 
 </idea-plugin>

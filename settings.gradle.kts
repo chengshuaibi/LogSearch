@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "LogSearch"
+rootProject.name = "NovelReader"
