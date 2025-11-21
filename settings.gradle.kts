@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "NovelReader"
+rootProject.name = "ExcelImport"

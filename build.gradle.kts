@@ -55,5 +55,25 @@ tasks.processResources {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 dependencies {
-    implementation("com.hierynomus:sshj:0.36.0")
+    // ----------------------------------------------------
+    // 核心依赖
+    // ----------------------------------------------------
+    // 推荐：添加基础 POI 核心库，确保稳定解析
+    implementation("org.apache.poi:poi:5.2.3")
+    implementation("org.apache.poi:poi-ooxml:5.2.3")
+
+    // (可选) 外部日志库
+    implementation("org.apache.logging.log4j:log4j-core:2.20.0")
+
+    // (可选) MySQL 驱动
+    implementation("com.mysql:mysql-connector-j:8.2.0")
+
+    // ----------------------------------------------------
+    // 达梦驱动捆绑 (解决内网环境问题)
+    // ----------------------------------------------------
+    // 1. 编译和运行时依赖
+    implementation(fileTree(mapOf("dir" to "resources/lib", "include" to listOf("*.jar"))))
+
+    // 2. 额外保障：明确声明运行时需要捆绑 (用于内网环境)
+    runtimeOnly(fileTree(mapOf("dir" to "resources/lib", "include" to listOf("*.jar"))))
 }

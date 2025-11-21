@@ -1,16 +1,33 @@
 <idea-plugin>
-    <id>org.atguigu.plugintest</id>
-    <name>Novel Status Bar</name>
-    <vendor email="you@example.com">Atguigu</vendor>
-    <version>1.0.0</version>
+    <id>com.yourname.excel.importer</id>
+    <name>Excel SQL Importer</name>
+    <vendor email="you@example.com" url="http://www.example.com">YourName</vendor>
+    <id>com.yourname.dm.importer</id>
 
     <depends>com.intellij.modules.platform</depends>
 
+    <depends>com.intellij.modules.lang</depends>
+
+    <description><![CDATA[
+    Imports Excel files to SQL insert statements.<br>
+    Allows filtering columns and setting table names.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
     <extensions defaultExtensionNs="com.intellij">
-        <statusBarWidgetFactory
-                implementation="org.atguigu.plugintest.NovelStatusBarWidgetFactory"
-                id="NovelStatusBarWidget"/>
+        <applicationService
+                serviceImplementation="org.atguigu.plugintest.AppSettingsState"
+        />
     </extensions>
+    <actions>
+        <group id="ExcelImportGroup" text="生产文件导入" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
 
-
+            <action id="ImportExcelToSql"
+                    class="org.atguigu.plugintest.ImportExcelAction"
+                    text="Import Excel to SQL..."
+                    description="Convert Excel data to SQL insert statements">
+            </action>
+        </group>
+    </actions>
 </idea-plugin>
