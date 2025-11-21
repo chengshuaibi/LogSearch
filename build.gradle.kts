@@ -54,6 +54,12 @@ sourceSets {
 tasks.processResources {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
 dependencies {
-    implementation("com.hierynomus:sshj:0.36.0")
+    // 移除不相关的 sshj 依赖。
+    // implementation("com.hierynomus:sshj:0.36.0")
+
+    // ✅ 添加用于 JSON 读写的 Gson 依赖
+    // 推荐使用较新的版本，这里使用稳定版 2.10.1
+    implementation("com.google.code.gson:gson:2.10.1")
 }
