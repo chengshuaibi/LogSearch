@@ -17,6 +17,10 @@ intellij {
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf(/* Plugin Dependencies */))
+
+    // IMPORTANT: Ensure the Dameng driver JAR is bundled with the plugin
+    // 假设 DmJdbcDriver18-8.1.3.62.jar 放在项目根目录的 lib 文件夹中
+    // This tells the plugin to include the library inside the final JAR/ZIP
 }
 
 tasks {
@@ -68,12 +72,7 @@ dependencies {
     // (可选) MySQL 驱动
     implementation("com.mysql:mysql-connector-j:8.2.0")
 
-    // ----------------------------------------------------
-    // 达梦驱动捆绑 (解决内网环境问题)
-    // ----------------------------------------------------
-    // 1. 编译和运行时依赖
-    implementation(fileTree(mapOf("dir" to "resources/lib", "include" to listOf("*.jar"))))
-
-    // 2. 额外保障：明确声明运行时需要捆绑 (用于内网环境)
-    runtimeOnly(fileTree(mapOf("dir" to "resources/lib", "include" to listOf("*.jar"))))
+    // 新增：本地 Dameng 驱动依赖
+    // Make sure to put the JAR in a 'lib' directory
+    implementation(files("lib/DmJdbcDriver18-8.1.3.62.jar"))
 }

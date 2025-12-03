@@ -1,8 +1,10 @@
 <idea-plugin>
+    <!-- 修复：保留唯一的插件 ID -->
     <id>com.yourname.excel.importer</id>
     <name>Excel SQL Importer</name>
     <vendor email="you@example.com" url="http://www.example.com">YourName</vendor>
-    <id>com.yourname.dm.importer</id>
+
+    <!-- 注意：第二个 <id> com.yourname.dm.importer 已被移除 -->
 
     <depends>com.intellij.modules.platform</depends>
 
@@ -20,13 +22,14 @@
         />
     </extensions>
     <actions>
-        <group id="ExcelImportGroup" text="生产文件导入" popup="true">
+        <!-- 调整 group id 和 text 以更清晰 -->
+        <group id="ExcelDbImportGroup" text="Database Import Tools" popup="true">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
 
             <action id="ImportExcelToSql"
                     class="org.atguigu.plugintest.ImportExcelAction"
-                    text="Import Excel to SQL..."
-                    description="Convert Excel data to SQL insert statements">
+                    text="Import Excel to Database..."
+                    description="Import Excel data into a database table">
             </action>
         </group>
     </actions>
