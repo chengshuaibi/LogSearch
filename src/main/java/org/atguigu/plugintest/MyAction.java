@@ -26,6 +26,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
@@ -51,6 +52,9 @@ public class MyAction extends AnAction {
     private static final int MAX_LOG_LINES = 1000;
     private static final int CONNECT_TIMEOUT = 8000;
     private static final int COMMAND_TIMEOUT = 8000;
+
+    /** 每次刷新到 UI 的最大行数，避免一次性插入过多导致 EDT 卡顿 */
+    private static final int MAX_FLUSH_LINES = 500;
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
@@ -287,6 +291,10 @@ public class MyAction extends AnAction {
         private final AtomicReference<Session.Command> commandRef =
                 new AtomicReference<>();
 
+        /** 保存输入流，stop 时第一时间关闭它，打断阻塞的 readLine() */
+        private final AtomicReference<InputStream> streamRef =
+                new AtomicReference<>();
+
         private final EnvConfig env;
         private final String keyword;
         private final JTextPane logPane;
@@ -367,9 +375,12 @@ public class MyAction extends AnAction {
                 command = session.exec(shellCommand);
                 commandRef.set(command);
 
+                InputStream in = command.getInputStream();
+                streamRef.set(in);
+
                 try (BufferedReader reader = new BufferedReader(
                         new InputStreamReader(
-                                command.getInputStream(),
+                                in,
                                 StandardCharsets.UTF_8))) {
 
                     String line;
@@ -385,6 +396,7 @@ public class MyAction extends AnAction {
                 }
 
             } catch (Exception e) {
+                // 主动 stop 时输入流被关闭会抛异常，此时 running 已为 false，不再弹窗
                 if (running.get()
                         && !Thread.currentThread().isInterrupted()) {
                     showReadError("连接异常：" + e.getMessage());
@@ -404,7 +416,8 @@ public class MyAction extends AnAction {
             }
 
             List<String> lines = new ArrayList<>();
-            logQueue.drainTo(lines);
+            // 限制单次处理行数，避免一次性插入过多导致 EDT 卡顿
+            logQueue.drainTo(lines, MAX_FLUSH_LINES);
 
             if (lines.isEmpty()) {
                 return;
@@ -413,16 +426,17 @@ public class MyAction extends AnAction {
             try {
                 StyledDocument doc = logPane.getStyledDocument();
 
+                boolean hasKeyword =
+                        keyword != null && !keyword.trim().isEmpty();
+
                 Style style = logPane.getStyle(
-                        keyword != null && !keyword.trim().isEmpty()
-                                ? "keyword" : "default");
+                        hasKeyword ? "keyword" : "default");
 
                 if (style == null) {
                     style = logPane.addStyle(
-                            keyword != null && !keyword.trim().isEmpty()
-                                    ? "keyword" : "default", null);
+                            hasKeyword ? "keyword" : "default", null);
 
-                    if (keyword != null && !keyword.trim().isEmpty()) {
+                    if (hasKeyword) {
                         StyleConstants.setForeground(style, Color.RED);
                     }
                 }
@@ -479,6 +493,10 @@ public class MyAction extends AnAction {
             }
         }
 
+        /**
+         * 停止读取。会立刻关闭输入流打断 readLine()，
+         * 把耗时的 SSH 关闭动作放到后台线程执行，避免阻塞 EDT。
+         */
         public void stop() {
             running.set(false);
 
@@ -491,26 +509,41 @@ public class MyAction extends AnAction {
                 timer.stop();
             }
 
-            Session.Command command = commandRef.getAndSet(null);
-            if (command != null) {
+            // 1) 先关输入流，让 readLine() 立刻抛异常返回
+            InputStream in = streamRef.getAndSet(null);
+            if (in != null) {
                 try {
-                    command.close();
+                    in.close();
                 } catch (Exception ignored) {
                 }
             }
 
-            Session session = sessionRef.getAndSet(null);
-            if (session != null) {
-                try {
-                    session.close();
-                } catch (Exception ignored) {
+            // 2) 后台线程执行耗时的关闭动作
+            Thread shutdown = new Thread(() -> {
+                Session.Command command = commandRef.getAndSet(null);
+                if (command != null) {
+                    try {
+                        command.close();
+                    } catch (Exception ignored) {
+                    }
                 }
-            }
 
-            SSHClient ssh = sshRef.getAndSet(null);
-            MyAction.this.closeSsh(ssh);
+                Session session = sessionRef.getAndSet(null);
+                if (session != null) {
+                    try {
+                        session.close();
+                    } catch (Exception ignored) {
+                    }
+                }
 
-            // 停止时保留已收到的日志，最后刷新到界面
+                SSHClient ssh = sshRef.getAndSet(null);
+                MyAction.this.closeSsh(ssh);
+            }, "ssh-log-shutdown");
+
+            shutdown.setDaemon(true);
+            shutdown.start();
+
+            // 3) 停止时保留已收到的日志，最后刷新到界面
             SwingUtilities.invokeLater(() -> {
                 if (logPane.isDisplayable()) {
                     flushLogsToUI();
@@ -993,18 +1026,25 @@ public class MyAction extends AnAction {
 
     // ==================== 日志裁剪 ====================
 
+    /**
+     * 一次删除所有超额行，避免每次只删一行导致日志越堆越多、UI 越读越卡。
+     */
     private void trimLog(StyledDocument doc)
             throws BadLocationException {
 
         Element root = doc.getDefaultRootElement();
         int lineCount = root.getElementCount();
 
-        if (lineCount > MAX_LOG_LINES) {
-            Element firstLine = root.getElement(0);
-            int removeLength = firstLine.getEndOffset();
-
-            doc.remove(0, Math.min(removeLength, doc.getLength()));
+        if (lineCount <= MAX_LOG_LINES) {
+            return;
         }
+
+        int excess = lineCount - MAX_LOG_LINES;
+        // 取第 excess 行的前一行，删掉 [0, 它的 endOffset) 即删掉 excess 行
+        Element lastRemoved = root.getElement(excess - 1);
+        int removeLength = lastRemoved.getEndOffset();
+
+        doc.remove(0, Math.min(removeLength, doc.getLength()));
     }
 
     // ==================== 文本变化监听 ====================
