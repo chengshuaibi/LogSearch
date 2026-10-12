@@ -758,8 +758,14 @@ public class MyAction extends AnAction {
         topPanel.add(exportButton);
 
         frame.add(topPanel, BorderLayout.NORTH);
-        frame.add(new JScrollPane(logPane), BorderLayout.CENTER);
-
+        JScrollPane scrollPane = new JScrollPane(logPane);
+        scrollPane.setHorizontalScrollBarPolicy(
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+// 让视口宽度跟随窗口变化，从而实时折行
+        scrollPane.setWheelScrollingEnabled(true);
+        frame.add(scrollPane, BorderLayout.CENTER);
         AtomicReference<LogReaderContext> activeContext =
                 new AtomicReference<>();
 
