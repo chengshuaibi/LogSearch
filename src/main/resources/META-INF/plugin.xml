@@ -20,7 +20,7 @@
         <action id="MyPluginAction"
                 class="org.atguigu.plugintest.MyAction"
                 text="日志哥"
-                description="测试插件是否正常运行">
+                description="牛逼轰轰的工作台小伙">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>

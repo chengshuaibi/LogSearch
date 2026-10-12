@@ -1,59 +1,51 @@
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "1.9.24"
-    id("org.jetbrains.intellij") version "1.17.3"
+    id("org.jetbrains.kotlin.jvm") version "2.1.0"
+    id("org.jetbrains.intellij.platform") version "2.5.0"
 }
 
 group = "org.atguigu"
-version = "1.0-SNAPSHOT"
+version = "1.2.0"
 
 repositories {
+    // 1. 优先使用 JetBrains 官方仓库（IntelliJ 插件必须）
+    intellijPlatform {
+        defaultRepositories()
+    }
+    // 2. 中央仓库
     mavenCentral()
+    // 3. 阿里云镜像
+    maven {
+        url = uri("https://maven.aliyun.com/repository/public")
+    }
 }
-// Configure Gradle IntelliJ Plugin
-// Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
-intellij {
-    version.set("2023.2")
-    type.set("IC") // Target IDE Platform
 
-    plugins.set(listOf(/* Plugin Dependencies */))
+dependencies {
+    intellijPlatform {
+        create("IC", "2023.3")
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+    }
+}
+
+intellijPlatform {
+    pluginConfiguration {
+        ideaVersion {
+            sinceBuild = "233.0"
+            untilBuild = "253.*"
+        }
+
+        changeNotes = """
+          Support versions up to 2025
+        """.trimIndent()
+    }
 }
 
 tasks {
-    // Set the JVM compatibility versions
     withType<JavaCompile> {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
+        sourceCompatibility = "1.8"
+        targetCompatibility = "1.8"
     }
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions.jvmTarget = "17"
+        kotlinOptions.jvmTarget = "1.8"
     }
-
-    patchPluginXml {
-        sinceBuild.set("232")
-        untilBuild.set("242.*")
-    }
-
-    signPlugin {
-        certificateChain.set(System.getenv("CERTIFICATE_CHAIN"))
-        privateKey.set(System.getenv("PRIVATE_KEY"))
-        password.set(System.getenv("PRIVATE_KEY_PASSWORD"))
-    }
-
-    publishPlugin {
-        token.set(System.getenv("PUBLISH_TOKEN"))
-    }
-}
-sourceSets {
-    main {
-        java.srcDirs("src/main/kotlin")
-        resources.srcDirs("src/main/resources")
-    }
-}
-
-tasks.processResources {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-dependencies {
-    implementation("com.hierynomus:sshj:0.36.0")
 }
