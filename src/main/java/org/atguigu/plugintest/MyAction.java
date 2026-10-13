@@ -429,17 +429,7 @@ public class MyAction extends AnAction {
                 boolean hasKeyword =
                         keyword != null && !keyword.trim().isEmpty();
 
-                Style style = logPane.getStyle(
-                        hasKeyword ? "keyword" : "default");
-
-                if (style == null) {
-                    style = logPane.addStyle(
-                            hasKeyword ? "keyword" : "default", null);
-
-                    if (hasKeyword) {
-                        StyleConstants.setForeground(style, Color.RED);
-                    }
-                }
+                Style style = logPane.getStyle("default");
 
                 StringBuilder text = new StringBuilder();
                 for (String line : lines) {
