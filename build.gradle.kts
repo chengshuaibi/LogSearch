@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.atguigu"
-version = "1.2.0"
+version = "1.3.0"
 
 repositories {
     // 1. 优先使用 JetBrains 官方仓库（IntelliJ 插件必须）
